@@ -1,40 +1,45 @@
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
-
 import java.sql.*;
 
 /**
  * Created by luyi on 2016/12/16.
+   Updated by arjunravinarayan on 2017/01/11.
+
+
+ To set up the environment, run:
+
+./cockroach sql -e "create database db1"
+./cockroach sql -d db1 -e "create table test1(pk string, value timestamp)"
+./cockroach sql -d db1 -e "insert into test1 values('mykey', now())"
  */
 public class Main {
 
-    private static String url = "jdbc:postgresql://db1:26257,db2:26257,db3:26257/test12432?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory&loadBalanceHosts=true";
-
-    private static String user = "user";
-
-    private static String password = "password";
-
     public static void main(String[] args) throws SQLException {
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(url);
-        config.setUsername(user);
-        config.setPassword(password);
-        config.addDataSourceProperty("cachePrepStmts", "false");
-        config.setMaximumPoolSize(1);
-        HikariDataSource ds = new HikariDataSource(config);
+        String url = new StringBuilder()
+            .append("jdbc:postgresql://")
+            .append("localhost")
+            .append(':')
+            .append(26257)
+            .append('/')
+            .append("db1")
+            .append("?user=root")
+            .append("&sslmode=disable")
+            .append("&ssl=false")
+            //            .append("&binaryTransferDisable=1114")
+            // Uncommenting this line fixes the issue.
+            .toString();
 
-        for (int i = 0; i < 100; i++) {
-            Connection conn = ds.getConnection();
-            PreparedStatement pstmt = conn.prepareStatement("SELECT * FROM test1 WHERE pk = ?");
-            pstmt.setString(1, "mykey");
+        Connection conn = DriverManager.getConnection(url);
+        PreparedStatement pstmt = conn.prepareStatement("SELECT * FROM test1 WHERE pk = ?");
+        pstmt.setString(1, "mykey");
+        for (int i = 0; i < 10; i++) {
             ResultSet rs = pstmt.executeQuery();
             rs.next();
+            String key = rs.getString("pk");
             Timestamp ts = rs.getTimestamp("value");
-            System.out.println(ts);
+            System.out.println(key + ", " + ts);
             rs.close();
-            pstmt.close();
-            conn.close();
         }
+        pstmt.close();
+        conn.close();
     }
-
 }
